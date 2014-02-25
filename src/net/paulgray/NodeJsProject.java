@@ -7,6 +7,8 @@ package net.paulgray;
 
 import java.awt.Image;
 import java.beans.PropertyChangeListener;
+import java.io.IOException;
+import java.util.List;
 import javax.swing.Icon;
 import javax.swing.ImageIcon;
 import org.netbeans.api.annotations.common.StaticResource;
@@ -28,6 +30,10 @@ import org.openide.util.Lookup;
 import javax.swing.Action;
 import org.openide.util.lookup.Lookups;
 import org.openide.util.lookup.ProxyLookup;
+import org.json.simple.JSONObject;
+import org.json.simple.parser.JSONParser;
+import org.json.simple.parser.ParseException;
+import org.netbeans.spi.project.ui.support.NodeFactorySupport;
 
 /**
  *
@@ -38,10 +44,26 @@ public class NodeJsProject implements Project {
     private final FileObject projectDir;
     private final ProjectState state;
     private Lookup lkp;
-
+    private String projectName;
+    private JSONObject dependencies;
+    private JSONObject devDependencies;
+    private String version;
+    
     NodeJsProject(FileObject dir, ProjectState state) {
         this.projectDir = dir;
         this.state = state;
+
+        JSONParser p = new JSONParser();
+        try {
+            JSONObject package_json = (JSONObject) p.parse(dir.getFileObject(NodeJsProjectFactory.PROJECT_FILE).asText());
+            this.projectName = (String) package_json.get("name");
+            this.dependencies = (JSONObject) package_json.get("dependencies");
+            this.devDependencies = (JSONObject) package_json.get("devDependencies");
+            this.version = (String)package_json.get("version");
+        } catch (Exception e) {
+            this.projectName = "<unnamed>";
+        }
+
     }
 
     @Override
@@ -53,7 +75,10 @@ public class NodeJsProject implements Project {
     public Lookup getLookup() {
         if (lkp == null) {
             lkp = Lookups.fixed(new Object[]{
-                new Info(),});
+                this,
+                new Info(),
+                new NodeJsProjectLogicalView(this)
+            });
         }
         return lkp;
     }
@@ -117,7 +142,7 @@ public class NodeJsProject implements Project {
                 return new ProjectNode(nodeOfProjectFolder, project);
             } catch (DataObjectNotFoundException donfe) {
                 Exceptions.printStackTrace(donfe);
-            //Fallback-the directory couldn't be created -
+                //Fallback-the directory couldn't be created -
                 //read-only filesystem or something evil happened
                 return new AbstractNode(Children.LEAF);
             }
@@ -128,10 +153,12 @@ public class NodeJsProject implements Project {
             final NodeJsProject project;
 
             public ProjectNode(Node node, NodeJsProject project) throws DataObjectNotFoundException {
-                super(node, new FilterNode.Children(node), new ProxyLookup( new Lookup[]{
-                                    Lookups.singleton(project),
-                                    node.getLookup()
-                                }));
+                super(node,
+                        new FilterNode.Children(node),
+                        new ProxyLookup(new Lookup[]{
+                            Lookups.singleton(project),
+                            node.getLookup()
+                        }));
                 this.project = project;
             }
 
@@ -157,7 +184,7 @@ public class NodeJsProject implements Project {
 
             @Override
             public String getDisplayName() {
-                return project.getProjectDirectory().getName();
+                return projectName;
             }
 
         }
@@ -168,6 +195,38 @@ public class NodeJsProject implements Project {
             return null;
         }
 
+    }
+
+    public String getProjectName() {
+        return projectName;
+    }
+
+    public void setProjectName(String projectName) {
+        this.projectName = projectName;
+    }
+
+    public JSONObject getDependencies() {
+        return dependencies;
+    }
+
+    public void setDependencies(JSONObject dependencies) {
+        this.dependencies = dependencies;
+    }
+
+    public JSONObject getDevDependencies() {
+        return devDependencies;
+    }
+
+    public void setDevDependencies(JSONObject devDependencies) {
+        this.devDependencies = devDependencies;
+    }
+
+    public String getVersion() {
+        return version;
+    }
+
+    public void setVersion(String version) {
+        this.version = version;
     }
 
 }
