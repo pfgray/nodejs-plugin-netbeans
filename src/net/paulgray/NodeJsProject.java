@@ -48,7 +48,7 @@ public class NodeJsProject implements Project {
     private JSONObject dependencies;
     private JSONObject devDependencies;
     private String version;
-    
+
     NodeJsProject(FileObject dir, ProjectState state) {
         this.projectDir = dir;
         this.state = state;
@@ -59,7 +59,7 @@ public class NodeJsProject implements Project {
             this.projectName = (String) package_json.get("name");
             this.dependencies = (JSONObject) package_json.get("dependencies");
             this.devDependencies = (JSONObject) package_json.get("devDependencies");
-            this.version = (String)package_json.get("version");
+            this.version = (String) package_json.get("version");
         } catch (Exception e) {
             this.projectName = "<unnamed>";
         }
@@ -154,7 +154,8 @@ public class NodeJsProject implements Project {
 
             public ProjectNode(Node node, NodeJsProject project) throws DataObjectNotFoundException {
                 super(node,
-                        new FilterNode.Children(node),
+                        NodeFactorySupport.createCompositeChildren(project, "Projects/org-customer-project/Nodes"),
+                        //new FilterNode.Children(node),
                         new ProxyLookup(new Lookup[]{
                             Lookups.singleton(project),
                             node.getLookup()
